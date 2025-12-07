@@ -34,6 +34,8 @@ final_models/*
 # Embeddings (can be large)
 embeddings/*
 !embeddings/.gitkeep
+!embeddings/extract_embeddings.py
+!embeddings/__init__.py
 
 # Pretrained models (can be large)
 pretrained_committee_models/*

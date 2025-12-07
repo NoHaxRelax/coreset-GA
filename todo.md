@@ -28,10 +28,10 @@ A step-by-step guide to building the coreset-GA system.
 
 ## === EMBEDDING EXTRACTION ===
 
-- [ ] Load pretrained feature extractor (e.g., ResNet50 backbone, remove final layer)
-- [ ] Extract 512-dim embeddings for all dataset images
-- [ ] Save embeddings to embeddings/ (one file per image or single .npy array)
-- [ ] Create embedding lookup utility for fast access during GA evaluation
+- [x] Load pretrained feature extractor (e.g., ResNet50 backbone, remove final layer)
+- [x] Extract 512-dim embeddings for all dataset images
+- [x] Save embeddings to embeddings/ (one file per image or single .npy array)
+- [x] Create embedding lookup utility for fast access during GA evaluation
 
 ---
 

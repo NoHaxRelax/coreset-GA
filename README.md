@@ -323,6 +323,29 @@ This script:
 
 **Note:** Difficulty scores are cached and will be reused by the GA evaluation module.
 
+### Embedding Extraction
+
+Extract embeddings from the selection pool for diversity computation:
+
+```bash
+# Extract embeddings using ResNet50 feature extractor
+python embeddings/extract_embeddings.py
+
+# Or with custom settings
+python embeddings/extract_embeddings.py --model resnet50 --embedding-dim 512 --batch-size 128
+```
+
+This script:
+- Loads a pretrained ResNet50 model (ImageNet weights)
+- Adapts it for MNIST (1-channel input) and creates a 512-dim feature extractor
+- Extracts embeddings from all samples in the selection pool
+- Saves embeddings to `embeddings/embeddings.npy`
+- Saves the feature extractor model to `embeddings/resnet50_feature_extractor.pth`
+
+**Note:** 
+- Embeddings are only extracted from the **selection pool** (not validation/test sets), as they are only needed for the GA diversity objective computation.
+- Embeddings are cached and will be reused by the GA evaluation module.
+
 ---
 
 ## License
