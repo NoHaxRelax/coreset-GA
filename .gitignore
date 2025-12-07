@@ -1,0 +1,56 @@
+# Data files (too large for git)
+data/*.npy
+data/MNIST/
+data/raw/
+
+data/dataset_metadata.json # Metadata about the dataset splits, not relevant to share
+
+# Keep scripts and small metadata
+!data/prepare_mnist.py
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# Results and outputs
+results/*
+!results/.gitkeep
+
+# Trained models
+final_models/*
+!final_models/.gitkeep
+
+# Embeddings (can be large)
+embeddings/*
+!embeddings/.gitkeep
+
+# Pretrained models (can be large)
+pretrained_committee_models/*
+!pretrained_committee_models/.gitkeep
+
+# Training outputs
+training/*
+!training/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+

@@ -1,0 +1,12 @@
+{
+  "selection_pool_size": 20000,
+  "validation_size": 2000,
+  "test_size": 2000,
+  "num_classes": 10,
+  "image_shape": [
+    1,
+    28,
+    28
+  ],
+  "seed": 2025
+}

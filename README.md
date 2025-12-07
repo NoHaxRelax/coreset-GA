@@ -247,5 +247,31 @@ This visualization shows:
 
 ---
 
+## Usage Guide
+
+This section provides step-by-step commands to reproduce the experimental results. All commands assume you're in the project root directory.
+
+### Dataset Preparation
+
+First, download and prepare the MNIST dataset with the correct train/validation/test splits:
+
+```bash
+# Default setup (20k selection pool, 2k validation, 2k test)
+python data/prepare_mnist.py --seed 2025
+
+# Or with custom sizes
+python data/prepare_mnist.py --selection-pool-size 20000 --validation-size 2000 --test-size 2000 --seed 2025
+```
+
+This creates:
+- `data/selection_pool_data.npy` and `data/selection_pool_labels.npy` - pool for GA subset selection
+- `data/validation_data.npy` and `data/validation_labels.npy` - validation set for early stopping
+- `data/test_data.npy` and `data/test_labels.npy` - held-out test set for final evaluation
+- `data/dataset_metadata.json` - metadata about the splits (sizes, shapes, seed)
+
+**Note:** The seed (default: 2025) ensures reproducible data splits. Use the same seed to reproduce exact results.
+
+---
+
 ## License
 MIT
