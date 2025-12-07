@@ -8,8 +8,8 @@ A step-by-step guide to building the coreset-GA system.
 
 - [x] Set up project structure (folders: data/, embeddings/, pretrained_committee_models/, ga/, experiments/, analysis/, results/, final_models/)
 - [x] Create requirements.txt with dependencies (numpy, torch, deap, scikit-learn, matplotlib, jupyter, etc.)
-- [ ] Download/prepare dataset and organize in data/
-- [ ] Create data loading utilities (train/test splits, class labels, image preprocessing)
+- [x] Download/prepare dataset and organize in data/
+- [x] Create data loading utilities (train/test splits, class labels, image preprocessing)
 - [ ] Set up configuration file (config.yaml or config.py) for hyperparameters, paths, k-values
 
 ---
