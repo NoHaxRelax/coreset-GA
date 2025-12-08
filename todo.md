@@ -59,11 +59,11 @@ A step-by-step guide to building the coreset-GA system.
 - [x] Add duplicate handling in crossover (fill with random unseen indices)
 
 ### NSGA-II Implementation
-- [ ] Implement non-dominated sorting (or use DEAP's NSGA-II)
-- [ ] Implement crowding distance calculation
-- [ ] Create selection operator (tournament selection on rank + crowding distance)
-- [ ] Implement Pareto front extraction
-- [ ] Add generation logging (save best individuals, objective values)
+- [x] Implement non-dominated sorting (or use DEAP's NSGA-II)
+- [x] Implement crowding distance calculation
+- [x] Create selection operator (tournament selection on rank + crowding distance)
+- [x] Implement Pareto front extraction
+- [x] Add generation logging (save best individuals, objective values)
 
 ---
 
