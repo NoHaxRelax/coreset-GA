@@ -38,25 +38,25 @@ A step-by-step guide to building the coreset-GA system.
 ## === GA CORE COMPONENTS ===
 
 ### Population & Chromosome
-- [ ] Implement chromosome representation (fixed-length list of k unique indices)
-- [ ] Create population initialization (random valid subsets of size k)
-- [ ] Add uniqueness validation/enforcement function
+- [x] Implement chromosome representation (fixed-length list of k unique indices)
+- [x] Create population initialization (random valid subsets of size k)
+- [x] Add uniqueness validation/enforcement function
 
 ### Evaluation Module
-- [ ] Implement difficulty objective (load cached scores, compute subset mean)
-- [ ] Implement diversity objective (cosine distance in embedding space)
-- [ ] Implement balance objective (class distribution deviation from uniform)
-- [ ] Create fitness evaluation function that returns (difficulty, diversity, balance) tuple
-- [ ] Add caching for objective scores to avoid redundant computation
+- [x] Implement difficulty objective (load cached scores, compute subset mean)
+- [x] Implement diversity objective (cosine distance in embedding space)
+- [x] Implement balance objective (class distribution deviation from uniform)
+- [x] Create fitness evaluation function that returns (difficulty, diversity, balance) tuple
+- [x] Add caching for objective scores to avoid redundant computation
 
 ### Genetic Operators
-- [ ] Implement mutation operators:
+- [x] Implement mutation operators:
   - Index replacement (70% probability)
   - Segment shuffle (20% probability)
   - Swap mutation (10% probability)
-- [ ] Add post-mutation uniqueness enforcement
-- [ ] Implement set-aware uniform crossover
-- [ ] Add duplicate handling in crossover (fill with random unseen indices)
+- [x] Add post-mutation uniqueness enforcement
+- [x] Implement set-aware uniform crossover
+- [x] Add duplicate handling in crossover (fill with random unseen indices)
 
 ### NSGA-II Implementation
 - [ ] Implement non-dominated sorting (or use DEAP's NSGA-II)
