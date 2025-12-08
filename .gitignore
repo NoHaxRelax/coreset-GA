@@ -7,6 +7,8 @@ data/dataset_metadata.json # Metadata about the dataset splits, not relevant to 
 
 # Keep scripts and small metadata
 !data/prepare_mnist.py
+!data/load_data.py
+!data/__init__.py
 !data/.gitkeep
 
 # Python
@@ -47,6 +49,9 @@ pretrained_committee_models/*
 # Training outputs
 training/*
 !training/.gitkeep
+!training/__init__.py
+!training/cnn_model.py
+!training/train_cnn.py
 
 # IDE
 .vscode/

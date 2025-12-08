@@ -91,15 +91,20 @@ A step-by-step guide to building the coreset-GA system.
 
 ## === CNN IMPLEMENTATION ===
 
-- [ ] Define lightweight CNN architecture (3 conv blocks + dense layers)
-- [ ] Create model factory function (returns model given number of classes)
-- [ ] Implement training loop:
+- [x] Define lightweight CNN architecture (3 conv blocks + dense layers)
+- [x] Create model factory function (returns model given number of classes)
+- [x] Implement training loop:
   - Data loading from selected subset
   - Training/validation splits
   - Early stopping
   - Model checkpointing
-- [ ] Add training utilities (accuracy calculation, loss tracking, learning rate scheduling)
-- [ ] Save trained models to final_models/cnn_k{size}.pth
+- [x] Add training utilities (accuracy calculation, loss tracking, learning rate scheduling)
+- [x] Save trained models with proper naming:
+  - GA-selected: final_models/cnn_ga_k{size}.pth
+  - Random baseline: final_models/cnn_random_k{size}_run{number}.pth (for multiple runs)
+  - Hardest-only: final_models/cnn_hardest_k{size}.pth
+  - Balanced-only: final_models/cnn_balanced_k{size}.pth
+  - Full dataset: final_models/cnn_full.pth
 
 ---
 
