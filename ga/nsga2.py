@@ -12,6 +12,8 @@ import numpy as np
 from typing import List, Tuple, Dict
 import sys
 from pathlib import Path
+import json
+import time
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
@@ -19,6 +21,28 @@ from ga.population import initialize_population
 from ga.evaluation import evaluate_population
 from ga.mutation import mutate
 from ga.crossover import crossover_uniform
+
+# region agent log
+BASE_DIR = Path(__file__).resolve().parents[1]
+_AGENT_LOG_PATH = BASE_DIR / "logs" / "debug.log"
+_AGENT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+def _agent_log(hypothesis_id: str, location: str, message: str, data: Dict) -> None:
+    try:
+        payload = {
+            "sessionId": "debug-session",
+            "runId": "baseline",
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": int(time.time() * 1000),
+        }
+        with open(_AGENT_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload) + "\n")
+    except Exception:
+        pass
+# endregion
 
 
 def dominates(fitness1: Tuple[float, float, float], fitness2: Tuple[float, float, float]) -> bool:
@@ -360,11 +384,27 @@ def run_nsga2(
         
         # Combine parent and offspring populations
         combined_population = population + offspring
+        eval_start = time.time()
         combined_fitnesses = fitnesses + evaluate_population(offspring)
+        eval_duration_ms = (time.time() - eval_start) * 1000
+        _agent_log(
+            hypothesis_id="H1",
+            location="ga/nsga2.py:run_nsga2",
+            message="offspring evaluation timing",
+            data={"gen": gen, "offspring": len(offspring), "duration_ms": eval_duration_ms},
+        )
         
         # Select next generation using NSGA-II selection
         # We'll use non-dominated sorting + crowding distance to select best individuals
+        nds_start = time.time()
         fronts = non_dominated_sorting(combined_fitnesses)
+        nds_duration_ms = (time.time() - nds_start) * 1000
+        _agent_log(
+            hypothesis_id="H2",
+            location="ga/nsga2.py:run_nsga2",
+            message="non_dominated_sorting timing",
+            data={"gen": gen, "combined_pop": len(combined_population), "duration_ms": nds_duration_ms},
+        )
         
         # Calculate crowding distances
         crowding_distances = np.zeros(len(combined_population))
@@ -396,7 +436,7 @@ def run_nsga2(
     pareto_chromosomes, pareto_fitnesses = get_pareto_front(population, fitnesses)
     
     if verbose:
-        print(f"\n✓ NSGA-II completed!")
+        print("\n✓ NSGA-II completed!")
         print(f"  Final Pareto front size: {len(pareto_chromosomes)}")
     
     return {
@@ -431,10 +471,10 @@ if __name__ == "__main__":
             verbose=True
         )
         
-        print(f"\nFinal results:")
+        print("\nFinal results:")
         print(f"  Population size: {len(result['population'])}")
         print(f"  Pareto front size: {len(result['pareto_front']['chromosomes'])}")
-        print(f"\nPareto front fitnesses:")
+        print("\nPareto front fitnesses:")
         for i, fitness in enumerate(result['pareto_front']['fitnesses'][:5]):
             print(f"  Solution {i+1}: difficulty={fitness[0]:.4f}, diversity={fitness[1]:.4f}, balance={fitness[2]:.4f}")
         

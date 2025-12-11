@@ -117,6 +117,11 @@ TRAIN_LEARNING_RATE = 0.001
 TRAIN_WEIGHT_DECAY = 1e-6
 TRAIN_EPOCHS = 50
 TRAIN_BATCH_SIZE_BASE = 32  # Will be adjusted based on subset size
+TRAIN_NUM_WORKERS = 4       # Dataloader workers (tune per machine)
+TRAIN_PIN_MEMORY = True     # Pin host memory for faster H2D
+TRAIN_NON_BLOCKING = True   # Non-blocking H2D copies
+TRAIN_USE_AMP = True        # Mixed precision (Tensor Cores on A100)
+TRAIN_CHANNELS_LAST = True  # Use NHWC for better conv throughput on Ampere
 
 # Early stopping
 EARLY_STOPPING_PATIENCE = 10
@@ -159,6 +164,11 @@ SUBSET_SELECTION_WEIGHTS = {
 COMPUTE_CLASS_WISE_F1 = True
 COMPUTE_CALIBRATION_ERROR = True
 COMPUTE_CONVERGENCE_SPEED = True
+
+# Diversity evaluation acceleration
+DIVERSITY_USE_GPU = False  # Set True to compute diversity with torch on GPU if available
+DIVERSITY_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DIVERSITY_TORCH_DTYPE = "float32"  # Options: "float16", "bfloat16", "float32"
 
 # ============================================================================
 # RESULTS AND LOGGING

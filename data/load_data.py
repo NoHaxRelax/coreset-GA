@@ -143,7 +143,9 @@ def create_dataloader(
     labels: np.ndarray,
     batch_size: int = 32,
     shuffle: bool = False,
-    indices: Optional[np.ndarray] = None
+    indices: Optional[np.ndarray] = None,
+    pin_memory: bool = False,
+    num_workers: int = 0,
 ) -> DataLoader:
     """
     Create a PyTorch DataLoader from numpy arrays.
@@ -159,7 +161,13 @@ def create_dataloader(
         PyTorch DataLoader
     """
     dataset = MNISTSubsetDataset(data, labels, indices)
-    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        pin_memory=pin_memory,
+        num_workers=num_workers,
+    )
 
 
 def get_class_distribution(labels: np.ndarray, num_classes: int = 10) -> np.ndarray:

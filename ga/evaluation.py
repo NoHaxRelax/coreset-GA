@@ -9,19 +9,49 @@ Implements three objectives:
 
 import numpy as np
 from typing import Tuple, Dict
-from functools import lru_cache
 import sys
 from pathlib import Path
+import json
+import time
+
+try:
+    import torch
+except Exception:
+    torch = None
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
 from data.load_data import load_selection_pool
 from embeddings.extract_embeddings import load_embeddings
 
+# region agent log
+BASE_DIR = Path(__file__).resolve().parents[1]
+_AGENT_LOG_PATH = BASE_DIR / "logs" / "debug.log"
+_AGENT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+def _agent_log(hypothesis_id: str, location: str, message: str, data: Dict) -> None:
+    try:
+        payload = {
+            "sessionId": "debug-session",
+            "runId": "baseline",
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": int(time.time() * 1000),
+        }
+        with open(_AGENT_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload) + "\n")
+    except Exception:
+        pass
+# endregion
+
 
 # Cache for loaded data
 _difficulty_scores = None
 _embeddings = None
+_normalized_embeddings = None
+_torch_normalized_embeddings = None
 _labels = None
 _pool_size = None
 
@@ -29,6 +59,7 @@ _pool_size = None
 def _load_cached_data():
     """Load and cache difficulty scores, embeddings, and labels."""
     global _difficulty_scores, _embeddings, _labels, _pool_size
+    global _normalized_embeddings, _torch_normalized_embeddings
     
     if _difficulty_scores is None:
         # Load difficulty scores
@@ -43,6 +74,18 @@ def _load_cached_data():
     if _embeddings is None:
         # Load embeddings
         _embeddings = load_embeddings()
+        # Precompute normalized embeddings for cosine similarity reuse
+        norms = np.linalg.norm(_embeddings, axis=1, keepdims=True)
+        norms = np.where(norms == 0, 1, norms)  # Avoid division by zero
+        _normalized_embeddings = _embeddings / norms
+        # Optionally move normalized embeddings to torch for GPU diversity calc
+        if config.DIVERSITY_USE_GPU and torch is not None:
+            device = config.DIVERSITY_DEVICE
+            dtype = getattr(torch, config.DIVERSITY_TORCH_DTYPE, torch.float32)
+            try:
+                _torch_normalized_embeddings = torch.as_tensor(_normalized_embeddings, device=device, dtype=dtype)
+            except Exception:
+                _torch_normalized_embeddings = None
     
     if _labels is None:
         # Load labels
@@ -97,28 +140,31 @@ def diversity_objective(indices: np.ndarray) -> float:
     if len(indices) < 2:
         return 0.0
     
-    # Get embeddings for the subset
-    subset_embeddings = _embeddings[indices]
-    
-    # Normalize embeddings for cosine similarity
-    norms = np.linalg.norm(subset_embeddings, axis=1, keepdims=True)
-    norms = np.where(norms == 0, 1, norms)  # Avoid division by zero
-    normalized_embeddings = subset_embeddings / norms
-    
-    # Compute pairwise cosine similarities
-    # cosine_sim = normalized_embeddings @ normalized_embeddings.T
-    # This gives a symmetric matrix, we only need upper triangle (excluding diagonal)
-    cosine_sim_matrix = np.dot(normalized_embeddings, normalized_embeddings.T)
-    
-    # Get upper triangle (excluding diagonal)
-    n = len(indices)
-    upper_triangle = cosine_sim_matrix[np.triu_indices(n, k=1)]
-    
-    # Mean cosine similarity
-    mean_cosine_sim = np.mean(upper_triangle)
+    start = time.time()
+    use_torch = _torch_normalized_embeddings is not None
+    if use_torch:
+        subset_embeddings = _torch_normalized_embeddings[indices]
+        cosine_sim_matrix = subset_embeddings @ subset_embeddings.T
+        n = len(indices)
+        tri = torch.triu_indices(n, n, offset=1, device=cosine_sim_matrix.device)
+        upper_triangle = cosine_sim_matrix[tri[0], tri[1]]
+        mean_cosine_sim = float(upper_triangle.mean().item())
+    else:
+        subset_embeddings = _normalized_embeddings[indices]
+        cosine_sim_matrix = np.dot(subset_embeddings, subset_embeddings.T)
+        n = len(indices)
+        upper_triangle = cosine_sim_matrix[np.triu_indices(n, k=1)]
+        mean_cosine_sim = np.mean(upper_triangle)
     
     # Diversity = 1 - mean cosine similarity
     diversity = 1.0 - mean_cosine_sim
+    duration_ms = (time.time() - start) * 1000
+    _agent_log(
+        hypothesis_id="H1",
+        location="ga/evaluation.py:diversity_objective",
+        message="diversity timing",
+        data={"k": int(len(indices)), "duration_ms": duration_ms, "torch": use_torch},
+    )
     
     return float(np.clip(diversity, 0.0, 1.0))
 
@@ -212,7 +258,7 @@ if __name__ == "__main__":
         diversity = diversity_objective(test_indices)
         balance = balance_objective(test_indices)
         
-        print(f"\nTest subset (first 10 indices):")
+        print("\nTest subset (first 10 indices):")
         print(f"  Difficulty: {difficulty:.4f}")
         print(f"  Diversity: {diversity:.4f}")
         print(f"  Balance: {balance:.4f}")

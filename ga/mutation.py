@@ -8,13 +8,36 @@ Implements three mutation strategies:
 """
 
 import numpy as np
-from typing import Tuple
 import sys
 from pathlib import Path
+import json
+import time
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
 from ga.population import enforce_uniqueness
+
+# region agent log
+BASE_DIR = Path(__file__).resolve().parents[1]
+_AGENT_LOG_PATH = BASE_DIR / "logs" / "debug.log"
+_AGENT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+def _agent_log(hypothesis_id: str, location: str, message: str, data: dict) -> None:
+    try:
+        payload = {
+            "sessionId": "debug-session",
+            "runId": "baseline",
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": int(time.time() * 1000),
+        }
+        with open(_AGENT_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload) + "\n")
+    except Exception:
+        pass
+# endregion
 
 
 def mutate_index_replacement(
@@ -52,11 +75,11 @@ def mutate_index_replacement(
     # Select indices to replace
     indices_to_replace = rng.choice(len(mutated), size=num_replacements, replace=False)
     
-    # Get currently used indices
-    used_indices = set(mutated)
-    
-    # Find available indices
-    available_indices = np.array([i for i in range(pool_size) if i not in used_indices])
+    # Build available indices mask (vectorized)
+    start = time.time()
+    available_mask = np.ones(pool_size, dtype=bool)
+    available_mask[mutated] = False
+    available_indices = np.flatnonzero(available_mask)
     
     if len(available_indices) < num_replacements:
         # Not enough available indices, just replace what we can
@@ -69,6 +92,20 @@ def mutate_index_replacement(
     
     # Enforce uniqueness and sort
     mutated = enforce_uniqueness(mutated, pool_size, rng=rng)
+    
+    duration_ms = (time.time() - start) * 1000
+    _agent_log(
+        hypothesis_id="H3",
+        location="ga/mutation.py:mutate_index_replacement",
+        message="available_indices timing",
+        data={
+            "pool_size": int(pool_size),
+            "k": int(len(chromosome)),
+            "num_replacements": int(num_replacements),
+            "available": int(len(available_indices)),
+            "duration_ms": duration_ms,
+        },
+    )
     
     return mutated
 
@@ -223,6 +260,11 @@ if __name__ == "__main__":
     print("\n4. Probabilistic mutation (10 runs):")
     for i in range(10):
         mutated = mutate(chromosome, pool_size, rng=rng)
-        mutation_type = "replacement" if np.sum(chromosome != mutated) > 2 else \
-                        "shuffle" if np.any(np.sort(chromosome) != np.sort(mutated)) == False else "swap"
+        mutation_type = (
+            "replacement"
+            if np.sum(chromosome != mutated) > 2
+            else "shuffle"
+            if not np.any(np.sort(chromosome) != np.sort(mutated))
+            else "swap"
+        )
         print(f"   Run {i+1}: {mutation_type} - {mutated[:5]}...")

@@ -26,7 +26,17 @@ from training.cnn_model import create_cnn
 from data.load_data import get_subset_data, load_validation_set, load_test_set, load_selection_pool, create_dataloader
 
 
-def train_epoch(model, dataloader, criterion, optimizer, device):
+def train_epoch(
+    model,
+    dataloader,
+    criterion,
+    optimizer,
+    device,
+    use_amp: bool,
+    scaler: torch.cuda.amp.GradScaler,
+    channels_last: bool,
+    non_blocking: bool
+):
     """Train for one epoch."""
     model.train()
     running_loss = 0.0
@@ -34,18 +44,23 @@ def train_epoch(model, dataloader, criterion, optimizer, device):
     total = 0
     
     for data, labels in dataloader:
-        data, labels = data.to(device), labels.to(device)
+        data = data.to(device, non_blocking=non_blocking)
+        labels = labels.to(device, non_blocking=non_blocking)
+        if channels_last:
+            data = data.to(memory_format=torch.channels_last)
         
         # Zero gradients
         optimizer.zero_grad()
         
         # Forward pass
-        outputs = model(data)
-        loss = criterion(outputs, labels)
+        with torch.cuda.amp.autocast(enabled=use_amp):
+            outputs = model(data)
+            loss = criterion(outputs, labels)
         
         # Backward pass
-        loss.backward()
-        optimizer.step()
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
         
         # Statistics
         running_loss += loss.item()
@@ -59,7 +74,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device):
     return epoch_loss, epoch_acc
 
 
-def validate(model, dataloader, criterion, device):
+def validate(model, dataloader, criterion, device, use_amp: bool, channels_last: bool, non_blocking: bool):
     """Validate model."""
     model.eval()
     running_loss = 0.0
@@ -68,10 +83,14 @@ def validate(model, dataloader, criterion, device):
     
     with torch.no_grad():
         for data, labels in dataloader:
-            data, labels = data.to(device), labels.to(device)
+            data = data.to(device, non_blocking=non_blocking)
+            labels = labels.to(device, non_blocking=non_blocking)
+            if channels_last:
+                data = data.to(memory_format=torch.channels_last)
             
-            outputs = model(data)
-            loss = criterion(outputs, labels)
+            with torch.cuda.amp.autocast(enabled=use_amp):
+                outputs = model(data)
+                loss = criterion(outputs, labels)
             
             running_loss += loss.item()
             _, predicted = torch.max(outputs.data, 1)
@@ -96,6 +115,11 @@ def train_cnn(
     batch_size: int = None,
     patience: int = None,
     device: str = None,
+    use_amp: bool = None,
+    channels_last: bool = None,
+    non_blocking: bool = None,
+    pin_memory: bool = None,
+    num_workers: int = None,
     seed: int = None,
     verbose: bool = True
 ):
@@ -139,6 +163,16 @@ def train_cnn(
         device = config.TRAIN_DEVICE
     if seed is None:
         seed = config.TRAIN_SEED
+    if use_amp is None:
+        use_amp = config.TRAIN_USE_AMP and device.startswith("cuda")
+    if channels_last is None:
+        channels_last = config.TRAIN_CHANNELS_LAST and device.startswith("cuda")
+    if non_blocking is None:
+        non_blocking = config.TRAIN_NON_BLOCKING
+    if pin_memory is None:
+        pin_memory = config.TRAIN_PIN_MEMORY
+    if num_workers is None:
+        num_workers = config.TRAIN_NUM_WORKERS
     
     device = torch.device(device)
     
@@ -154,6 +188,7 @@ def train_cnn(
         if run_number is not None:
             print(f"Run number: {run_number}")
         print(f"Device: {device}")
+        print(f"AMP: {use_amp}, channels_last: {channels_last}, pin_memory: {pin_memory}, num_workers: {num_workers}")
         print("=" * 60)
     
     # Load data
@@ -162,17 +197,41 @@ def train_cnn(
     test_data, test_labels = load_test_set()
     
     # Create dataloaders
-    train_loader = create_dataloader(train_data, train_labels, batch_size=batch_size, shuffle=True)
-    val_loader = create_dataloader(val_data, val_labels, batch_size=batch_size, shuffle=False)
-    test_loader = create_dataloader(test_data, test_labels, batch_size=batch_size, shuffle=False)
+    train_loader = create_dataloader(
+        train_data,
+        train_labels,
+        batch_size=batch_size,
+        shuffle=True,
+        pin_memory=pin_memory,
+        num_workers=num_workers,
+    )
+    val_loader = create_dataloader(
+        val_data,
+        val_labels,
+        batch_size=batch_size,
+        shuffle=False,
+        pin_memory=pin_memory,
+        num_workers=num_workers,
+    )
+    test_loader = create_dataloader(
+        test_data,
+        test_labels,
+        batch_size=batch_size,
+        shuffle=False,
+        pin_memory=pin_memory,
+        num_workers=num_workers,
+    )
     
     # Create model
     model = create_cnn(num_classes=num_classes)
+    if channels_last:
+        model = model.to(memory_format=torch.channels_last)
     model = model.to(device)
     
     # Loss and optimizer
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
     
     # Training history
     history = {
@@ -190,10 +249,28 @@ def train_cnn(
     # Training loop
     for epoch in range(epochs):
         # Train
-        train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, device)
+        train_loss, train_acc = train_epoch(
+            model,
+            train_loader,
+            criterion,
+            optimizer,
+            device,
+            use_amp=use_amp,
+            scaler=scaler,
+            channels_last=channels_last,
+            non_blocking=non_blocking,
+        )
         
         # Validate
-        val_loss, val_acc = validate(model, val_loader, criterion, device)
+        val_loss, val_acc = validate(
+            model,
+            val_loader,
+            criterion,
+            device,
+            use_amp=use_amp,
+            channels_last=channels_last,
+            non_blocking=non_blocking,
+        )
         
         # Record history
         history['epoch'].append(epoch + 1)
